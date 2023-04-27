@@ -6,7 +6,8 @@ import copy
 machine_description_filename = "TuringMachine.csv"
 # Название файла с описанием функции переходов
 delta_filename = "delta.csv"
-
+# Название файла с входными словами
+input_filename = "input.txt"
 
 # Загрузить данные о функции переходов
 def read_delta(fname):
@@ -61,25 +62,38 @@ class TuringMachine:
         # Печать недопустимых слов
         self.printInvalid = printInvalid
 
-    def launch(self, word, q, pos=0, transitions_str=''):
+    # Запуск машины на заданном слове
+    def launch(self, word, q, pos=0, transitions=[]):
+        # Проверка, не вышли ли мы за пределы текущего слова
         if pos < 0:
             word = self.B + word
         elif pos >= len(word):
             word = word + self.B
 
-        this_state = transitions_str + ' |- ' + word[:pos] + f'({q})' + word[pos:]
+        # Сохраним текущее состояние
+        current_state = word[:pos] + f'({q})' + word[pos:]
+        transitions = copy.deepcopy(transitions) + [current_state]
 
+        # Если попали в допускающее состояние
         if q in self.F:
-            print(this_state + ' OK!')
+            print(' |- '.join(transitions) + ' OK!')
             return
 
+        # Если попали в неописанное состояние
         if (q, word[pos]) not in self.delta:
             if self.printInvalid:
-                print(this_state + ' Undefined')
+                print(' |- '.join(transitions) + ' Undefined')
             return
 
+        # Если текущее состояние уже было
+        if transitions.count(current_state) > 1:
+            if self.printInvalid:
+                print(' |- '.join(transitions) + ' Cycle')
+            return
+
+        # Прогоняем машину дальше на каждом из следующих состояний
         for state in self.delta[(q, word[pos])]:
-            self.launch(word[:pos] + state[1] + word[pos + 1:], state[0], pos + 1 if state[2] == 'R' else pos - 1, this_state)
+            self.launch(word[:pos] + state[1] + word[pos + 1:], state[0], pos + 1 if state[2] == 'R' else pos - 1, transitions)
 
 
 
@@ -108,8 +122,9 @@ def read_machine(machine_fname, delta_fname):
 if __name__ == '__main__':
     machine = read_machine(machine_description_filename, delta_filename)
     #machine.printInvalid = True
-    print(machine.delta)
-    print(('q1', 'B') in machine.delta)
-    print(machine.delta.keys())
-    #launch(machine, '111', machine.q0)
-    machine.launch('111', machine.q0)
+    with open(input_filename) as f:
+        for word in f.readlines():
+            word = word.strip()
+            machine.launch(word, machine.q0)
+            print()
+    input()
